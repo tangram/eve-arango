@@ -2,6 +2,9 @@
 eve-arango – Eve ArangoDB data layer
 ====================================
 
+.. image:: https://badge.fury.io/py/eve-arango.svg
+    :target: https://badge.fury.io/py/eve-arango.svg
+
 .. image:: https://travis-ci.org/tangram/eve-arango.svg?branch=master
     :target: https://travis-ci.org/tangram/eve-arango
 
@@ -27,7 +30,7 @@ Installation
 
 .. code-block:: bash
 
-    $ pip install -e git://github.com/tangram/eve-arango.git#egg=eve-arango
+    $ pip install eve-arango
 
 Usage
 =====
