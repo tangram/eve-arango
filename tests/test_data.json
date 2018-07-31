@@ -1,0 +1,53 @@
+{
+    "musicians": [
+        {
+            "_key": "1",
+            "name": "Miles Davis"
+        },
+        {
+            "_key": "2",
+            "name": "John Coltrane"
+        },
+        {
+            "_key": "3",
+            "name": "Bill Evans"
+        }
+    ],
+    "instruments": [
+        {
+            "_key": "1",
+            "name": "Trumpet"
+        },
+        {
+            "_key": "2",
+            "name": "Saxophone"
+        },
+        {
+            "_key": "3",
+            "name": "Piano"
+        },
+        {
+            "_key": "4",
+            "name": "Double bass"
+        },
+        {
+            "_key": "5",
+            "name": "Drums"
+        }
+    ],
+    "played": [
+        {
+            "_from": "musicians/1",
+            "_to": "instruments/1"
+        },
+        {
+            "_from": "musicians/2",
+            "_to": "instruments/2"
+        },
+        {
+            "_from": "musicians/3",
+            "_to": "instruments/3"
+        }
+    ],
+    "albums": []
+}
