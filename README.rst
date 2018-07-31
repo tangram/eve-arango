@@ -2,6 +2,9 @@
 eve-arango – Eve ArangoDB data layer
 ====================================
 
+.. image:: https://travis-ci.org/tangram/eve-arango.svg?branch=master
+    :target: https://travis-ci.org/tangram/eve-arango
+
 Provides a data layer for ArangoDB to be used with Eve REST API framework.
 
 Features
