@@ -55,7 +55,7 @@ The following settings are processed:
 
     # If a database with name as set by ARANGO_DB_NAME doesn't exist,
     # it will be created when the data layer is initialized.
-    ARANGO_DB_NAME = 'database_name'
+    ARANGO_DB = 'database_name'
     ARANGO_HOST = 'localhost'
     ARANGO_PORT = 8529
 
