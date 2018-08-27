@@ -37,6 +37,8 @@ DOMAIN = {
             }
         }
     },
-    'played': {},
+    'played': {
+        'edge_collection': True,
+    },
     'albums': {}
 }

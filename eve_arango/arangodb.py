@@ -35,8 +35,9 @@ class ArangoDB(DataLayer):
         self.db = self.driver.db(db)
 
         for resource, settings in app.config['DOMAIN'].items():
+            edge = settings.get('edge_collection', False)
             if not self.db.has_collection(resource):
-                self.db.create_collection(resource)
+                self.db.create_collection(resource, edge=edge)
 
     def find(self, resource, req, sub_resource_lookup):
         """ Retrieves a set of documents (rows), matching the current request.

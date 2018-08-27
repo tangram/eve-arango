@@ -53,16 +53,18 @@ The following settings are processed:
     ITEM_LOOKUP_FIELD = ID_FIELD
     ITEM_URL = 'regex("[\w\d\-:.@()+,=;$!*\'%]+")'
 
-    # If a database with name as set by ARANGO_DB_NAME doesn't exist,
+    # If a database with ARANGO_DB's value doesn't exist,
     # it will be created when the data layer is initialized.
     ARANGO_DB = 'database_name'
     ARANGO_HOST = 'localhost'
     ARANGO_PORT = 8529
 
-    # If DOMAIN keys do not exist as collection names,
+    # If the keys in DOMAIN do not exist as collection names,
     # they will be created when the data layer is initialized.
     # There's no need to add '_id', '_key' or '_rev' fields,
     # they are added to the schema automatically.
+    # If you specifiy 'edge_collection': True as below,
+    # an edge collection will be created if it does not exist.
     DOMAIN = {
         'people': {
             'schema': {
@@ -70,6 +72,9 @@ The following settings are processed:
                     'type': 'string'
                 }
             }
+        },
+        'friends_with': {
+            'edge_collection': True,
         }
         # ...
     }
