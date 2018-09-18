@@ -1,5 +1,7 @@
 import json
+import re
 from datetime import datetime
+
 from eve.io.base import DataLayer
 from eve.utils import str_to_date
 from arango import ArangoClient
@@ -14,10 +16,24 @@ def date_hook(json_data):
     return json_data
 
 
+def parse_where(where):
+    arango_re = (
+        r'([\w-]+?)([\s!=<>~NOTLIKE]+)(".+?"|[\d\s\[\]nul,.]+)([ANDORT,]*)'
+    )
+    result = re.findall(arango_re, where)
+    return result
+
+
 class ArangoResult(list):
 
+    def __init__(self, cursor):
+        self.cursor = cursor
+        batch = list(cursor.batch())
+        processed_result = json.loads(json.dumps(batch), object_hook=date_hook)
+        super().__init__(processed_result)
+
     def count(self, with_limit_and_skip=False, **kwargs):
-        return len(self)
+        return self.cursor.statistics().get('fullCount')
 
 
 class ArangoDB(DataLayer):
@@ -56,21 +72,46 @@ class ArangoDB(DataLayer):
                     supports both Python and Mongo-like query syntaxes.
         :param sub_resource_lookup: sub-resource lookup from the endpoint url.
         """
-        filters = {}
+        filters = ''
         if req and req.where:
-            filters = json.loads(req.where) or filters
+            groups = parse_where(req.where)
+            filters += 'FILTER '
+            for group in groups:
+                key, op, val, sep = group
+                filters += f'doc.{key} {op} {val}'
+                if sep == ',':
+                    filters += '\nFILTER '
+                elif sep:
+                    filters += f' {sep} '
 
-        skip = None
-        limit = None
+        sort = ''
+        if req and req.sort:
+            sorts = []
+            fields = req.sort.split(',')
+            for field in fields:
+                if field[0] == '-':
+                    sorts.append(f'doc.{field[1:]} DESC')
+                else:
+                    sorts.append(f'doc.{field}')
+            sort += 'SORT '
+            sort += ', '.join(sorts)
+
+        skip = 0
+        limit = req.max_results
         if req and req.page and req.max_results:
-            skip = (req.page - 1) * req.max_results or None
-            limit = req.max_results
+            skip = (req.page - 1) * req.max_results or 0
 
-        datasource, _, _, _ = self.datasource(resource)
-        cursor = self.db.collection(datasource).find(filters, skip, limit)
-        result = list(cursor.batch())
-        processed_result = json.loads(json.dumps(result), object_hook=date_hook)
-        return ArangoResult(processed_result)
+        collection, _, _, _ = self.datasource(resource)
+        query = f'''
+        FOR doc IN {collection}
+            {filters}
+            {sort}
+            LIMIT {skip}, {limit}
+            RETURN doc
+        '''
+        cursor = self.db.aql.execute(query, full_count=True)
+
+        return ArangoResult(cursor)
 
     def find_one(self, resource, req, check_auth_value=True,
                  force_auth_field_projection=False, **lookup):
@@ -97,8 +138,8 @@ class ArangoDB(DataLayer):
                          id or, if alternate lookup is supported by the API,
                          the corresponding query.
         """
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).get(lookup)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).get(lookup)
         processed_result = json.loads(json.dumps(result), object_hook=date_hook)
         return processed_result
 
@@ -109,8 +150,8 @@ class ArangoDB(DataLayer):
         :param resource: resource name.
         :param ** lookup: lookup query.
         """
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).get(lookup)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).get(lookup)
         return result
 
     def find_list_of_ids(self, resource, ids, client_projection=None):
@@ -125,8 +166,8 @@ class ArangoDB(DataLayer):
         :return: a list of documents matching the ids in `ids` from the
         collection specified in `resource`
         """
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).get_many(ids)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).get_many(ids)
         return result
 
     def insert(self, resource, doc_or_docs):
@@ -142,8 +183,8 @@ class ArangoDB(DataLayer):
 
         data = json.loads(json.dumps(doc_or_docs, cls=self.json_encoder_class))
 
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).insert_many(data)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).insert_many(data)
         return result
 
     def update(self, resource, id_, updates, original):
@@ -164,8 +205,8 @@ class ArangoDB(DataLayer):
 
         data = json.loads(json.dumps(updates, cls=self.json_encoder_class))
 
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).update(data)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).update(data)
         return result
 
     def replace(self, resource, id_, document, original):
@@ -185,8 +226,8 @@ class ArangoDB(DataLayer):
 
         data = json.loads(json.dumps(document, cls=self.json_encoder_class))
 
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).replace(data)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).replace(data)
         return result
 
     def remove(self, resource, lookup):
@@ -200,8 +241,8 @@ class ArangoDB(DataLayer):
                        this is usually the unique id of the document to be
                        removed.
         """
-        datasource, _, _, _ = self.datasource(resource)
-        result = self.db.collection(datasource).delete_match(lookup)
+        collection, _, _, _ = self.datasource(resource)
+        result = self.db.collection(collection).delete_match(lookup)
         return result
 
     def is_empty(self, resource):
@@ -216,5 +257,5 @@ class ArangoDB(DataLayer):
                          the ``datasource`` helper function to retrieve
                          the actual datasource name.
         """
-        datasource, _, _, _ = self.datasource(resource)
-        return self.db.collection(datasource).count() == 0
+        collection, _, _, _ = self.datasource(resource)
+        return self.db.collection(collection).count() == 0

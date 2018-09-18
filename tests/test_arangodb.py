@@ -6,7 +6,7 @@ import pytest
 from arango import ArangoClient
 from eve import Eve
 from eve.utils import ParsedRequest
-from eve_arango.arangodb import ArangoDB, ArangoResult
+from eve_arango.arangodb import ArangoDB, ArangoResult, parse_where
 
 
 @pytest.fixture(scope='module')
@@ -58,6 +58,7 @@ def test_find(data_layer):
     # test data has 3 musicians
     # filter defaults to None
     req = ParsedRequest()
+    req.max_results = 100
     results = data_layer.find(resource, req, sub_resource_lookup)
     assert len(results) == 3
     assert results[0]['name'] == 'Miles Davis'
@@ -69,7 +70,8 @@ def test_find_where(data_layer):
     resource = 'musicians'
     sub_resource_lookup = None
     req = ParsedRequest()
-    req.where = '{"name": "Bill Evans"}'
+    req.where = 'name == "Bill Evans"'
+    req.max_results = 1
     results = data_layer.find(resource, req, sub_resource_lookup)
     assert len(results) == 1
     assert results[0]['name'] == 'Bill Evans'
@@ -79,10 +81,10 @@ def test_pagination(data_layer):
     resource = 'instruments'
     sub_resource_lookup = None
     req = ParsedRequest()
-    req.max_results = 3
+    req.max_results = 1
     req.page = 2
     results = data_layer.find(resource, req, sub_resource_lookup)
-    assert len(results) == 2
+    assert len(results) == 1
 
 
 def test_find_one(data_layer):
@@ -173,7 +175,38 @@ def test_is_empty(data_layer):
     assert result == True
 
 
+def test_parse_where():
+    where = 'name=="Bill Evans",yearNOT IN[1981,1982] AND foo LIKE "[a-z]+bar$"'
+    groups = parse_where(where)
+    assert len(groups) == 3
+    assert len(groups[0]) == 4
+    key, op, value, sep = groups[0]
+    assert key == 'name'
+    assert op == '=='
+    assert value == '"Bill Evans"'
+    assert sep == ','
+    key, op, value, sep = groups[1]
+    assert key == 'year'
+    assert op == 'NOT IN'
+    assert value == '[1981,1982] '
+    assert sep == 'AND'
+    key, op, value, sep = groups[2]
+    assert key == 'foo'
+    assert op == ' LIKE '
+    assert value == '"[a-z]+bar$"'
+    assert sep == ''
+
+
 def test_arango_result():
-    result = ArangoResult(['a', 'b', 'c'])
+
+    class MockCursor:
+        def batch(self):
+            return self.data
+        def statistics(self):
+            return {'fullCount': len(self.data)}
+
+    cursor = MockCursor()
+    cursor.data = [1, 2, 3]
+    result = ArangoResult(cursor)
     assert len(result) == 3
     assert result.count() == 3

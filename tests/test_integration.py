@@ -22,13 +22,22 @@ def test_get_resource(test_client):
 
 
 def test_get_resource_where(test_client):
-    result = test_client.get('/musicians?where={"name": "Bill Evans"}')
+    result = test_client.get('/musicians?where=name=="Miles Davis"ORname=="Bill Evans"')
     assert result.status_code == 200
+    assert result.json['_items'][0]['name'] == 'Miles Davis'
+    assert result.json['_items'][1]['name'] == 'Bill Evans'
+
+
+def test_get_resource_sort(test_client):
+    result = test_client.get('/musicians?sort=name,-born')
+    assert result.status_code == 200
+    assert result.json['_items'][0]['name'] == 'Bill Evans'
 
 
 def test_pagination(test_client):
-    result = test_client.get('/musicians?page=2&max_results=3')
+    result = test_client.get('/musicians?page=2&max_results=1')
     assert result.status_code == 200
+    assert result.json['_meta']['total'] > 1
 
 
 def test_get_item(test_client):

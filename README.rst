@@ -13,13 +13,14 @@ Provides a data layer for ArangoDB to be used with Eve REST API framework.
 Features
 ========
 
-- Supports CRUD operations for using ArangoDB as a document store
+- CRUD operations for using ArangoDB as a document store
 - Supports the same operations on edge documents for managing relations
+- Filtering based on AQL syntax
+- Pagination and sorting
 
 Not supported (yet):
 
 - Proper graph queries
-- Sorting
 - Versioning
 - Projection
 - Aggregation
@@ -53,7 +54,7 @@ The following settings are processed:
     ITEM_LOOKUP_FIELD = ID_FIELD
     ITEM_URL = 'regex("[\w\d\-:.@()+,=;$!*\'%]+")'
 
-    # If a database with ARANGO_DB's value doesn't exist,
+    # If a database named ARANGO_DB's value doesn't exist,
     # it will be created when the data layer is initialized.
     ARANGO_DB = 'database_name'
     ARANGO_HOST = 'localhost'
@@ -74,10 +75,35 @@ The following settings are processed:
             }
         },
         'friends_with': {
-            'edge_collection': True,
-        }
+            'edge_collection': True
+        },
         # ...
     }
+
+Filtering and sorting
+=====================
+
+eve-arango uses AQL syntax for filtering via the Eve `where` parameter. Mongo-style queries are not valid. Here are some examples of valid (url decoded) queries and their resulting AQL:
+
+.. code-block::
+    # Spaces are optional.
+    ?where=foo == "bar"
+    # FILTER doc.foo == "bar"
+
+    # Use , as simple separator between FILTER expressions.
+    ?where=numIN[1,2,3],present!=null
+    # FILTER doc.num IN [1,2,3]
+    # FILTER doc.present != null
+
+    # AND, OR, NOT can be used to combine expressions.
+    ?where=a=="a"ANDb=="b"ORc=="c"
+    # FILTER doc.a == "a" AND doc.b == "b" OR doc.c == "c"
+
+Sorting uses the regular Eve syntax. An example is given below:
+
+.. code-block::
+    ?sort=name,-age
+    # SORT doc.name, doc.age DESC
 
 Contributing
 ============
