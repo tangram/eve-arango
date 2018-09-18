@@ -78,11 +78,11 @@ class ArangoDB(DataLayer):
             filters += 'FILTER '
             for group in groups:
                 key, op, val, sep = group
-                filters += f'doc.{key} {op} {val}'
+                filters += 'doc.%s %s %s' % (key, op, val)
                 if sep == ',':
                     filters += '\nFILTER '
                 elif sep:
-                    filters += f' {sep} '
+                    filters += ' %s ' % sep
 
         sort = ''
         if req and req.sort:
@@ -90,9 +90,9 @@ class ArangoDB(DataLayer):
             fields = req.sort.split(',')
             for field in fields:
                 if field[0] == '-':
-                    sorts.append(f'doc.{field[1:]} DESC')
+                    sorts.append('doc.%s DESC' % field[1:])
                 else:
-                    sorts.append(f'doc.{field}')
+                    sorts.append('doc.%s' % field)
             sort += 'SORT '
             sort += ', '.join(sorts)
 
@@ -102,13 +102,13 @@ class ArangoDB(DataLayer):
             skip = (req.page - 1) * req.max_results or 0
 
         collection, _, _, _ = self.datasource(resource)
-        query = f'''
-        FOR doc IN {collection}
-            {filters}
-            {sort}
-            LIMIT {skip}, {limit}
+        query = '''
+        FOR doc IN %s
+            %s
+            %s
+            LIMIT %s, %s
             RETURN doc
-        '''
+        ''' % (collection, filters, sort, skip, limit)
         cursor = self.db.aql.execute(query, full_count=True)
 
         return ArangoResult(cursor)
