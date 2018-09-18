@@ -83,25 +83,27 @@ The following settings are processed:
 Filtering and sorting
 =====================
 
-eve-arango uses AQL syntax for filtering via the Eve `where` parameter. Mongo-style queries are not valid. Here are some examples of valid (url decoded) queries and their resulting AQL:
+eve-arango uses AQL syntax for filtering via the Eve ``where`` parameter. Mongo-style queries are not valid. Here are some examples of valid (url decoded) queries and their resulting AQL:
 
 .. code-block::
-    # Spaces are optional.
+
     ?where=foo == "bar"
+    # Spaces are optional.
     # FILTER doc.foo == "bar"
 
-    # Use , as simple separator between FILTER expressions.
     ?where=numIN[1,2,3],present!=null
+    # Use , as simple separator between FILTER expressions.
     # FILTER doc.num IN [1,2,3]
     # FILTER doc.present != null
 
-    # AND, OR, NOT can be used to combine expressions.
     ?where=a=="a"ANDb=="b"ORc=="c"
+    # AND, OR, NOT can be used to combine expressions.
     # FILTER doc.a == "a" AND doc.b == "b" OR doc.c == "c"
 
 Sorting uses the regular Eve syntax. An example is given below:
 
 .. code-block::
+
     ?sort=name,-age
     # SORT doc.name, doc.age DESC
 
