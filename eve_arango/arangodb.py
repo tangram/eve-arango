@@ -90,8 +90,10 @@ class ArangoDB(DataLayer):
                 key, op, val, sep = map(str.strip, group)
                 assert op in VALID_OPS
                 assert sep in VALID_SEPS
+                if val[0] == '"' and val[-1] == '"':
+                    val = val[1:-1]
                 bind_vars['key_%i' % i] = key
-                bind_vars['val_%i' % i] = val.replace('"', '')
+                bind_vars['val_%i' % i] = val
                 filters += 'doc.@key_%i %s @val_%i' % (i, op, i)
                 if sep == ',':
                     filters += '\nFILTER '
