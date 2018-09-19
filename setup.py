@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name='eve-arango',
-    version='0.3.2',
+    version='0.3.3',
     description='Eve ArangoDB data layer',
     long_description=open('README.rst').read(),
     author='Eirik Krogstad',

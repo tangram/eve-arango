@@ -7,6 +7,14 @@ from eve.utils import str_to_date
 from arango import ArangoClient
 
 
+VALID_OPS = [
+    '==', '!=', '<', '<=', '>', '>=',
+    'IN', 'NOT IN', 'LIKE', '=~', '!~'
+]
+
+VALID_SEPS = ['', ',', 'AND', 'OR', 'NOT']
+
+
 def date_hook(json_data):
     for key, value in json_data.items():
         try:
@@ -72,13 +80,19 @@ class ArangoDB(DataLayer):
                     supports both Python and Mongo-like query syntaxes.
         :param sub_resource_lookup: sub-resource lookup from the endpoint url.
         """
+        bind_vars = {}
+
         filters = ''
         if req and req.where:
             groups = parse_where(req.where)
             filters += 'FILTER '
-            for group in groups:
-                key, op, val, sep = group
-                filters += 'doc.%s %s %s' % (key, op, val)
+            for i, group in enumerate(groups):
+                key, op, val, sep = map(str.strip, group)
+                assert op in VALID_OPS
+                assert sep in VALID_SEPS
+                bind_vars['key_%i' % i] = key
+                bind_vars['val_%i' % i] = val.replace('"', '')
+                filters += 'doc.@key_%i %s @val_%i' % (i, op, i)
                 if sep == ',':
                     filters += '\nFILTER '
                 elif sep:
@@ -88,13 +102,14 @@ class ArangoDB(DataLayer):
         if req and req.sort:
             sorts = []
             fields = req.sort.split(',')
-            for field in fields:
+            for i, field in enumerate(fields):
                 if field[0] == '-':
-                    sorts.append('doc.%s DESC' % field[1:])
+                    bind_vars['sort_%i' % i] = field[1:].strip()
+                    sorts.append('doc.@sort_%i DESC' % i)
                 else:
-                    sorts.append('doc.%s' % field)
-            sort += 'SORT '
-            sort += ', '.join(sorts)
+                    bind_vars['sort_%i' % i] = field.strip()
+                    sorts.append('doc.@sort_%i' % i)
+            sort += 'SORT ' + ', '.join(sorts)
 
         skip = 0
         limit = req.max_results
@@ -103,14 +118,14 @@ class ArangoDB(DataLayer):
 
         collection, _, _, _ = self.datasource(resource)
         query = '''
-        FOR doc IN %s
+        FOR doc IN @@collection
             %s
             %s
-            LIMIT %s, %s
+            LIMIT %i, %i
             RETURN doc
-        ''' % (collection, filters, sort, skip, limit)
-        cursor = self.db.aql.execute(query, full_count=True)
-
+        ''' % (filters, sort, skip, limit)
+        bind_vars['@collection'] = collection
+        cursor = self.db.aql.execute(query, bind_vars=bind_vars, full_count=True)
         return ArangoResult(cursor)
 
     def find_one(self, resource, req, check_auth_value=True,
